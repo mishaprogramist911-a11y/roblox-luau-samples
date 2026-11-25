@@ -1,0 +1,5 @@
+*.rbxl
+*.rbxlx
+*.lock
+roblox.yml
+.DS_Store

@@ -31,11 +31,27 @@ local TEMPLATE: Data = {
 	wins = 0,
 }
 
-local store = DataStoreService:GetDataStore(STORE_NAME)
+-- Anything with GetAsync and SetAsync works here, which lets the module be
+-- tested with an in-memory table instead of the real DataStore.
+export type Store = {
+	GetAsync: (self: any, key: string) -> any,
+	SetAsync: (self: any, key: string, value: any, userIds: { number }?) -> any,
+}
+
+local store: Store? = nil
 local sessions: { [Player]: Data } = {}
 local started = false
 
 local PlayerData = {}
+
+-- GetDataStore itself can throw (for example in a place that is not published),
+-- so it is only called from inside the retried, pcall-protected requests.
+local function getStore(): Store
+	if not store then
+		store = DataStoreService:GetDataStore(STORE_NAME) :: any
+	end
+	return store :: Store
+end
 
 local function keyFor(player: Player): string
 	return "player_" .. player.UserId
@@ -72,7 +88,7 @@ end
 
 local function load(player: Player)
 	local ok, result = attempt(function()
-		return store:GetAsync(keyFor(player))
+		return getStore():GetAsync(keyFor(player))
 	end)
 	if not ok then
 		warn(`[PlayerData] load failed for {player.Name}: {result}`)
@@ -92,7 +108,7 @@ local function save(player: Player): boolean
 	end
 	local snapshot = table.clone(data)
 	local ok, err = attempt(function()
-		store:SetAsync(keyFor(player), snapshot, { player.UserId })
+		getStore():SetAsync(keyFor(player), snapshot, { player.UserId })
 		return nil
 	end)
 	if not ok then
@@ -116,12 +132,13 @@ function PlayerData.addCoins(player: Player, amount: number): boolean
 	return true
 end
 
--- Call once from a server Script.
-function PlayerData.start()
+-- Call once from a server Script. `customStore` is optional and meant for tests.
+function PlayerData.start(customStore: Store?)
 	if started then
 		return
 	end
 	started = true
+	store = customStore
 
 	Players.PlayerAdded:Connect(load)
 	for _, player in Players:GetPlayers() do

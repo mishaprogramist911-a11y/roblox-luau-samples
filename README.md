@@ -40,8 +40,15 @@ turn on "Enable Studio Access to API Services" in Game Settings, and press Play.
 ## What was checked
 
 - The project builds with Rojo and passes Selene with no warnings.
-- The limiter logic and the data clean-up logic were run in Studio with test values.
-- The full pickup and save flow was not yet run in a published game.
+- Run in Roblox Studio in a blank test place, with one player:
+  - walking into a coin gives 1 coin, hides the coin, and it comes back after 10 seconds
+  - asking for a far coin, an untagged part, or junk values gives nothing
+  - 30 requests in a row for one coin give 1 coin
+  - a failed first read is retried, and broken saved values are replaced by defaults
+  - data is written when the server shuts down
+  - with no DataStore access, the player is kicked with a message and nothing is saved
+- The save tests used an in-memory stand-in passed to `PlayerData.start(store)`.
+  The real DataStore was not yet run in a published game.
 
 Written with AI tools and reviewed by me.
 
